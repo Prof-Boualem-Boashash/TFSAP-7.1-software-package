@@ -1,0 +1,4 @@
+Due to the size of the EEG data files and the limit imposed by the GitHub website,
+the EEG data files need to be downloaded from the following link:
+https://drive.google.com/open?id=0B5Krx2mcHlxqd2thMXVBWUtsTGc
+and then placed in the folder “EEGDataSet\Original”
