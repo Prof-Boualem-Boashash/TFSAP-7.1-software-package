@@ -277,7 +277,7 @@ for i_patient = 1:Np
             case 'embd'
                 tfd = quadtfd(sig_cur_epoch, N-1, tres, 'emb',alpha, beta, N);
             case 'ckd'
-                tfd = cmpt(sig_cur_epoch,'ecsk', C,D,E);
+                tfd = cmpt(sig_cur_epoch,'ckd', C,D,E);
             case 'mdd'
                 tfd = myMDD(sig_cur_epoch(:)',C,thr,0,1);
             case 'awvd'   % Affine Wigner-Ville
