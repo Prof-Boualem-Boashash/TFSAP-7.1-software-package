@@ -1,0 +1,11 @@
+#############################################################################
+#
+# Makefile for TFSA (GCC Solaris version)
+# 
+# Do not edit!
+#
+#############################################################################
+
+# Inference rule for compiling C files into O files
+.c.o:
+	$(CC) $(CFLAGS) $< -c -o ../$@
