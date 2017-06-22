@@ -1,0 +1,258 @@
+#############################################################################
+#
+# Makefile for TFSAP
+# 
+# Look at source.tex for a comprehensive overview.
+#
+# To compile:
+#
+# 1 : Set MATLAB_BASE environment variable 
+# 2 : Set the installation directory
+# 3 : Choose whether to compile with debug information
+# 4 : Choose whether to compile optimized code
+# 5 : Do a 'make -fMakefile.mac all'
+# 6 : Do a 'make -fMakefile.mac install'
+#
+# Do a 'make -fMakefile.mac clean' to remove all object files, mex files
+# and backup files from the source tree. This is useful before doing a new
+# compilation when any changes have been made to the source tree or to
+# the Makefile.
+#
+# NOTE: Created for Mac OS 10.12
+#############################################################################
+
+# 1 : Set to base directory of Mathworks Matlab installation
+MATLAB_BASE = /Volumes/Untitled/Applications/MATLAB_R2015a.app
+MATLAB_BIN = ${MATLAB_BASE}/bin/matlab
+
+
+# 2. What is the computer architecture
+Arch = maci64
+MEXEXT = mexmaci64
+
+# 3. Set the installation directory
+BINDIR = ./${Arch}_bin
+
+# 4. Most of these compiler options from the automatically generated (by Matlab) 'mexopt.sh' file
+CC=xcrun  -sdk macosx10.12  clang
+ARCHS=x86_64
+MHEADERS = -I$(MATLAB_BASE)/extern/include -I../include
+MW_SDKROOT= /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk
+MACOSX_DEPLOYMENT_TARGET=10.12
+CFLAGS= $(MHEADERS) -fno-common -arch $(ARCHS) -isysroot $(MW_SDKROOT) -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET) -fexceptions -O2 -DNDEBUG
+CLIBS=MLIBS
+
+
+# 5. Linker options:
+LD = xcrun  -sdk macosx10.12  clang
+LIBS=-L${MATLAB_BASE}/bin/$(Arch) -lmx -lmex -lmat -lmwservices -lut
+LFLAGS = -shared $(CFLAGS)
+MCC = mcc
+
+# 6. For Matlab .p files
+
+GEN_PCODE = ./gen_pcode.bash
+
+
+export CC
+export MCC
+export CFLAGS
+
+
+#############################################################################
+# Edit below here if new source added !!!
+#############################################################################
+
+# TFSA functions source files
+func_src = cmpt.c ambf.c analyt.c quadknl.c quadtfd.c gsig.c lms.c pdeIF.c pwvd4.c pwvd6.c pwvpe.c rihaczek.c rls.c sfpe.c spec.c stft.c specSM.c synthesize.c wlet.c wvd.c wvpe.c xwvd.c zce.c
+
+# TFSA functions support source files
+func_support = arithm.c fft.c random.c tfsa_c.c tlocal.c window.c
+
+# GUI functions will be translated to pcode.
+# gui_m = flatwf getWin goodfonts tfsademo tfsa_err_gui tfsa_err tfsahelp tfsamenu tfsaopen
+# tfsapl tfsa_plot2d tfsaScratch tfsa_wrn uideflts uif_base uif_btfd uif_defs uif_dirtfd
+# uif_gsig uif_ife uif_mtfd uif_plot uif_synth uif_ts unphase wfall
+
+gui_m = flatwf.m getWin.m goodfonts.m tfsademo.m tfsa_err_gui.m tfsa_err.m tfsahelp.m		\
+tfsamenu.m tfsaopen.m tfsapl.m tfsa_plot2d.m tfsa_wrn.m uideflts.m uif_base.m uif_btfd.m	\
+uif_defs.m uif_dirtfd.m uif_gsig.m uif_ife.m uif_mtfd.m uif_plot.m uif_synth.m uif_ts.m		\
+unphase.m wfall.m
+
+
+#############################################################################
+# Don't edit below here!!!
+#############################################################################
+
+
+# TFSA functions wrapper source files
+func_wrap = $(func_src:.c=_m.c)
+
+# TFSA function object files
+func_src_objs = $(func_src:.c=.o)
+
+# TFSA function wrapper object files
+func_wrap_objs = $(func_wrap:.c=.o)
+
+# TFSA function support object files
+func_support_objs = $(func_support:.c=.o)
+
+# TFSA functions compiled mex files
+mex_files = $(func_wrap:_m.c=.$(MEXEXT))
+
+# TFSA function pcode for GUI m files..
+gui_m_pcode = $(gui_m)
+
+
+# All targets
+all : libmd.a $(mex_files)
+#all : libmd.a $(mex_files) gui_code
+
+# Target for function source file objects
+$(func_src_objs) :
+	cd func_src && $(MAKE) -fMakefile.gcc $@
+
+# Target for function support source file objects
+$(func_support_objs) :
+	cd func_support && $(MAKE) -fMakefile.gcc $@
+
+# Target for function wrapper source file objects
+$(func_wrap_objs) :
+	cd func_wrap && $(MAKE) -fMakefile.gcc $@
+
+# Target for function wrapper source file objects
+#gui_code :
+#	cd gui_m && $(GEN_PCODE) $(MATLAB_BIN) $(gui_m_pcode)
+
+
+# Cephes maths library which include special functions.
+libmd.a :
+	cd maths_cephes && $(MAKE) -fMakefile.gcc
+
+#############################################################################
+# Don't edit above here!!!
+#############################################################################
+
+#############################################################################
+# Add new target below here if new source added !!!
+#
+# Note that compiling C into O files is always defined as an implicit rule
+#############################################################################
+# Mex file targets
+ambf.$(MEXEXT) : ambf.o analyt.o ambf_m.o tfsa_c.o fft.o arithm.o  tlocal.o
+	$(LD) $(LFLAGS) $^ -o $@ $(LIBS)
+
+analyt.$(MEXEXT): analyt_m.o analyt.o tfsa_c.o tlocal.o fft.o arithm.o tlocal.o
+	$(LD) $(LFLAGS) $^ -o $@ $(LIBS)
+
+quadknl.$(MEXEXT): quadknl_m.o quadknl.o tfsa_c.o window.o tlocal.o libmd.a
+	$(LD)  $(LFLAGS) $^ -o $@ $(LIBS)
+
+quadtfd.$(MEXEXT): quadtfd.o quadtfd_m.o quadknl.o fft.o arithm.o analyt.o tfsa_c.o window.o tlocal.o libmd.a
+	$(LD)  $(LFLAGS) $^ -o $@ $(LIBS)
+
+cmpt.$(MEXEXT): cmpt_m.o cmpt.o quadknl.o fft.o arithm.o analyt.o tfsa_c.o window.o tlocal.o libmd.a
+	$(LD)  $(LFLAGS) $^ -o $@ $(LIBS)
+
+gsig.$(MEXEXT): gsig_m.o gsig.o tfsa_c.o tlocal.o random.o 
+	$(LD)  $(LFLAGS) $^ -o $@ $(LIBS)
+
+lms.$(MEXEXT): lms_m.o lms.o tfsa_c.o tlocal.o  analyt.o fft.o arithm.o
+	$(LD)  $(LFLAGS) $^ -o $@ $(LIBS)
+
+pdeIF.$(MEXEXT): pdeIF_m.o pdeIF.o fft.o arithm.o analyt.o tfsa_c.o tlocal.o
+	$(LD)  $(LFLAGS) $^ -o $@ $(LIBS)
+
+pwvd4.$(MEXEXT): pwvd4_m.o pwvd4.o fft.o arithm.o analyt.o tfsa_c.o tlocal.o 
+	$(LD)  $(LFLAGS) $^ -o $@ $(LIBS)
+
+pwvd6.$(MEXEXT): pwvd6_m.o pwvd6.o fft.o arithm.o analyt.o tfsa_c.o tlocal.o 
+	$(LD)  $(LFLAGS) $^ -o $@ $(LIBS)
+
+pwvpe.$(MEXEXT): pwvpe_m.o pwvpe.o tfsa_c.o tlocal.o  analyt.o fft.o arithm.o
+	$(LD)  $(LFLAGS) $^ -o $@ $(LIBS)
+
+rihaczek.$(MEXEXT): rihaczek_m.o rihaczek.o tfsa_c.o tlocal.o  analyt.o fft.o arithm.o spec.o window.o libmd.a
+	$(LD)  $(LFLAGS) $^ -o $@ $(LIBS)
+
+rls.$(MEXEXT): rls_m.o rls.o tfsa_c.o tlocal.o  analyt.o fft.o arithm.o
+	$(LD)  $(LFLAGS) $^ -o $@ $(LIBS)
+
+sfpe.$(MEXEXT): sfpe_m.o sfpe.o tfsa_c.o tlocal.o  analyt.o fft.o arithm.o
+	$(LD)  $(LFLAGS) $^ -o $@ $(LIBS)
+
+spec.$(MEXEXT): spec_m.o spec.o tfsa_c.o tlocal.o window.o analyt.o fft.o arithm.o libmd.a
+	$(LD)  $(LFLAGS) $^ -o $@ $(LIBS)
+
+stft.$(MEXEXT): stft_m.o stft.o tlocal.o window.o analyt.o fft.o arithm.o libmd.a
+	$(LD)  $(LFLAGS) $^ -o $@ $(LIBS)
+
+specSM.$(MEXEXT): specSM_m.o specSM.o stft.o tfsa_c.o tlocal.o window.o analyt.o fft.o arithm.o libmd.a
+	$(LD)  $(LFLAGS) $^ -o $@ $(LIBS)
+
+synthesize.$(MEXEXT): synthesize_m.o synthesize.o tfsa_c.o tlocal.o window.o analyt.o fft.o arithm.o spec.o libmd.a
+	$(LD)  $(LFLAGS) $^ -o $@ $(LIBS)
+
+wlet.$(MEXEXT): wlet_m.o window.o tfsa_c.o tlocal.o  wlet.o libmd.a
+	$(LD)  $(LFLAGS) $^ -o $@ $(LIBS)
+
+wvd.$(MEXEXT): wvd_m.o wvd.o fft.o arithm.o analyt.o tfsa_c.o tlocal.o 
+	$(LD)  $(LFLAGS) $^ -o $@ $(LIBS)
+
+wvpe.$(MEXEXT): wvpe_m.o wvpe.o tfsa_c.o tlocal.o  analyt.o fft.o arithm.o
+	$(LD)  $(LFLAGS) $^ -o $@ $(LIBS)
+
+xwvd.$(MEXEXT): xwvd_m.o xwvd.o fft.o arithm.o analyt.o tfsa_c.o tlocal.o 
+	$(LD)  $(LFLAGS) $^ -o $@ $(LIBS)
+
+zce.$(MEXEXT): zce_m.o zce.o tfsa_c.o tlocal.o 
+	$(LD)  $(LFLAGS) $^ -o $@ $(LIBS)
+
+
+#############################################################################
+# Don't edit below here!!!
+#############################################################################
+
+install: $(mex_files) $(func_m) $(data_files)
+	mkdir -p $(BINDIR)
+	chmod 755 $(BINDIR)
+	cp $(mex_files) $(BINDIR)
+	cp func_m/*.m $(BINDIR)
+	cp func_support/*.p $(BINDIR)	
+	cp gui_m/* $(BINDIR)
+	cp data/* $(BINDIR)
+	cd $(BINDIR); chmod 444 *
+	cp -R htmldocs/ $(BINDIR)
+	chmod 755 $(BINDIR)/htmldocs
+	mkdir -p $(BINDIR)/help
+	chmod -R 755 $(BINDIR)/help
+	cp  gui_m/help/*m $(BINDIR)/help/
+	mkdir -p $(BINDIR)/Documentation
+	chmod -R 755 $(BINDIR)/Documentation
+	cp  ./Documentation/*.pdf $(BINDIR)/Documentation/
+	cp -R htmldocs $(BINDIR)/
+
+
+
+clean:
+	rm -f libmd.a
+	rm -f *~ *.o *.$(MEXEXT)
+
+uninstall:
+	rm -rf $(BINDIR)/* 
+
+cleanall:
+	rm -f func_src/*~
+	rm -f func_wrap/*~
+	rm -f func_support/*~
+	rm -f func_m/*~
+	rm -f gui_m/*~
+	rm -f include_m/*~
+	rm -f libmd.a
+	rm -f *~ *.o *.$(MEXEXT) 
+	#rm -f gui_m/*.p
+	cd maths_cephes && make -f Makefile.gcc clean && cd ..
+
+
+
+

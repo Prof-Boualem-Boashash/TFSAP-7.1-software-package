@@ -1,0 +1,357 @@
+#############################################################################
+#
+# Makefile for TFSA (PC version) 
+# 
+# Look at source.tex for a comprehensive overview.
+#
+# To compile:
+#
+# 1 : Set MATLAB_BASE environment variable 
+# 2 : Set the installation directory
+# 3 : Choose whether to compile with debug information
+# 4 : Choose whether to compile optimized code
+# 5 : Do a 'nmake -fMakefile.msvc all'
+# 6 : Do a 'nmake -fMakefile.msvc install'
+#
+# Do a 'nmake -fMakefile.msvc clean' to remove all object files, mex files
+# and backup files from the source tree. This is useful before doing a new
+# compilation when any changes have been made to the source tree or to
+# the Makefile.
+#
+# Be sure to run the vcvars32.bat or vcvars64.bat from the VC distribution to set
+# environment variables correctly before trying to make the source
+# (Should be C:\Program Files (x86)\Microsoft Visual Studio 9.0\VC\vcvars64.bat)
+#
+# Modified for Microsoft Visual C++ 2008 Express edition (32bit) 
+#
+#############################################################################
+
+
+#---------------------------------------------------------------------
+# 1 : 32-bit or 64-bit computer architecture?
+#---------------------------------------------------------------------
+#ARCH = win32	
+ARCH = win64	
+
+
+!if "$(ARCH)" == "win64"
+MEXEXT = mexw64		
+!else
+MEXEXT = mexw32	
+!endif
+
+
+#---------------------------------------------------------------------
+# 2 : Set to base directory of Mathworks Matlab installation
+#---------------------------------------------------------------------
+!if "$(ARCH)" == "win64"
+!message === COMPILING FOR 64-BIT ===
+
+MATLAB_BASE=C:\Program Files\MATLAB\R2015a
+VC_INSTALLDIR=C:\Program Files (x86)\Microsoft Visual Studio 10.0
+VC_BASE=$(VC_INSTALLDIR)\VC
+VC_LINK_DIR=C:\Program Files\Microsoft SDKs\Windows\v7.1
+VC_BATCH=$(VC_BASE)\vcvars64.bat
+
+!else
+!message === COMPILING FOR 32-BIT ===
+
+MATLAB_BASE=C:\Program Files\Matlab\R2010a
+VC_INSTALLDIR=C:\Program Files\Microsoft Visual Studio 10.0
+VC_BASE=$(VC_INSTALLDIR)\VC
+VC_LINK_DIR=C:\Program Files\Microsoft SDKs\Windows\v7.0A
+VC_BATCH=$(VC_BASE)\vsvarsall.bat
+
+!endif
+
+
+
+
+#---------------------------------------------------------------------
+# 3 : Set the installation directory
+#---------------------------------------------------------------------
+BINDIR = .\$(ARCH)_bin
+
+
+
+#---------------------------------------------------------------------
+# Headers and libraries files
+#---------------------------------------------------------------------
+!if "$(ARCH)" == "win32"
+
+CC = "$(VC_BASE)\bin\cl.exe"
+LD = "$(VC_BASE)\bin\link.exe"
+
+MHEADERS=-I"$(MATLAB_BASE)\extern\include" -I..\include \
+         -I"$(VC_BASE)\Include" -I"$(VC_BASE)\Lib"  
+LIBLOC=$(MATLAB_BASE)\extern\lib\win32\microsoft
+MACHINE_TYPE=X86
+
+!else
+
+CC = "$(VC_BASE)\bin\amd64\cl.exe"
+LD = "$(VC_BASE)\bin\amd64\link.exe"
+
+MHEADERS=-I"$(MATLAB_BASE)\extern\include" -I..\include \
+	-I"$(VC_LINK_DIR)\include" -I"$(VC_BASE)\include" -I"$(VC_BASE)\vcpackages"  \
+        -I"$(VC_BASE)\lib\amd64"  -I"$(VC_LINK_DIR)\lib\x64"  -I"$(MATLAB_BASE)\extern\lib\win64"
+
+LIBLOC=$(MATLAB_BASE)\extern\lib\win64\microsoft
+MACHINE_TYPE=X64
+
+!endif
+
+
+#---------------------------------------------------------------------
+# Compiler and linker options
+#---------------------------------------------------------------------
+
+# /Oy 
+# CFLAGS
+#   /nologo            : CL does not display splash
+#   _CRT_NO_DEPRECATE  : Do not deprecate `insecure' fscanf, snprintf, ...
+#   /I.                : Add . to search path
+#   /Z7                : Embedded CodeView debug info in .obj
+#   /MT                : Multi-thread run-time library
+#   /LD                : Creates DLL (do not use /MD as this requires MSVS run-time libraries)
+#   /TC                : Source code is C (not C++)
+#   /W3                : Usa all warnings
+#   /Zp8               : Align structures to 8 bytes
+#   /Oy                : Omits frame pointer (x86 only)
+#   /GR                : Enables runtime information (RTTI) (need this?)
+#
+# LFLAGS
+#   /NOLOGO            : LINK does not display splash
+#   /INCREMENTAL:NO    : No incremental linking
+#   /DLL               : Builds a DLL
+#
+CFLAGS=$(MHEADERS) /c /Zp8 /GR /W3 /nologo /LD /Ox /DNDEBUG /D_CRT_SECURE_NO_DEPRECATE	\
+	/D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0 /DMATLAB_MEX_FILE
+
+# # LDFLAGS = /dll /nologo /MACHINE:X86 /incremental:NO /export:mexFunction			\
+# # 	/LIBPATH:"$(LIBLOC)" libmx.lib libmex.lib libmat.lib kernel32.lib user32.lib	\
+# # 	gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib		\
+# # 	oleaut32.lib uuid.lib odbccp32.lib
+
+LFLAGS = /dll /nologo /export:mexFunction /LIBPATH:"$(LIBLOC)" libmx.lib libmex.lib	\
+	libmat.lib /MACHINE:"$(MACHINE_TYPE)" /incremental:NO
+
+
+
+
+#---------------------------------------------------------------------
+# 6. For Matlab .p files
+#    (Assuming that this code is already here, generated from 
+#     Linxu version)
+#---------------------------------------------------------------------
+GEN_PCODE = ./gen_pcode.bash
+
+
+#---------------------------------------------------------------------
+# 7. Special maths function library (would like to do away with this)
+#---------------------------------------------------------------------
+MATHS_CEPHES_DIR = maths_cephes
+MATHS_CEPHES_LIB = fti.lib
+
+
+#############################################################################
+# Edit below here if new source added !!!
+#############################################################################
+
+
+# TFSA functions source files
+func_src = cmpt.c ambf.c analyt.c quadknl.c quadtfd.c gsig.c lms.c pdeIF.c pwvd4.c pwvd6.c pwvpe.c \
+rihaczek.c rls.c sfpe.c spec.c synthesize.c wlet.c wvd.c wvpe.c xwvd.c zce.c stft.c specSM.c
+
+# TFSA functions support source files
+func_support = arithm.c fft.c random.c tfsa_c.c tlocal.c window.c
+
+#############################################################################
+# Don't edit below here!!!
+#############################################################################
+
+# Flags etc. for MS-Windows MSVC8, 
+
+# Or can use the libraries supplied by MATLAB
+# LIBS = $(MATLAB_BASE)\extern\lib\win32\microsoft\msvc60\libmx.lib \
+#	 $(MATLAB_BASE)\extern\lib\win32\microsoft\msvc60\libmat.lib \
+#	 $(MATLAB_BASE)\extern\lib\win32\microsoft\msvc60\libmex.lib 
+
+
+
+# TFSA functions wrapper source files
+func_wrap = $(func_src:.c=_m.c)
+
+# TFSA function object files
+func_src_objs = $(func_src:.c=.obj)
+
+# TFSA function wrapper object files
+func_wrap_objs = $(func_wrap:.c=.obj)
+
+# TFSA function support object files
+func_support_objs = $(func_support:.c=.obj)
+
+# TFSA functions compiled mex files
+!if "$(ARCH)" == "win32"
+mex_files = $(func_wrap:_m.c=.mexw32)
+!else
+mex_files = $(func_wrap:_m.c=.mexw64)
+!endif
+
+# All targets
+all : dummy $(mex_files) 
+
+# Dummy target to set environment for recursive use of make
+dummy :
+      set CC=$(CC)
+      set CFLAGS=$(CFLAGS)
+
+# Target for function source file objects
+$(func_src_objs) :
+	cd func_src
+	$(MAKE) -fMakefile.msvc $@
+	cd ..
+
+# Target for function support source file objects
+$(func_support_objs) :
+	cd func_support
+	$(MAKE) -fMakefile.msvc $@
+	cd ..
+
+# Target for function wrapper source file objects
+$(func_wrap_objs) :
+	cd func_wrap
+	$(MAKE) -fMakefile.msvc $@
+	cd ..
+
+
+# Cephes maths library which include special functions.
+$(MATHS_CEPHES_LIB) :
+	cd maths_cephes 
+	$(MAKE) -f Makefile.msvc all
+	$(MAKE) -f Makefile.msvc install
+	cd ..
+
+
+
+#############################################################################
+# Don't edit above here!!!
+#############################################################################
+
+#############################################################################
+# Add new target below here if new source added !!!
+#############################################################################
+# Mex file targets
+ambf.$(MEXEXT) : ambf.obj analyt.obj ambf_m.obj fft.obj arithm.obj tfsa_c.obj tlocal.obj $(LIBS)
+    $(LD) $(LFLAGS) $** /out:$@  $(LIBS)
+
+analyt.$(MEXEXT): analyt_m.obj analyt.obj tfsa_c.obj tlocal.obj fft.obj arithm.obj tlocal.obj $(LIBS)
+    $(LD) $(LFLAGS) $** /out:$@  $(LIBS)
+
+quadknl.$(MEXEXT): quadknl_m.obj quadknl.obj tfsa_c.obj fft.obj arithm.obj analyt.obj window.obj tlocal.obj $(MATHS_CEPHES_LIB) $(LIBS)
+    $(LD) $(LFLAGS) $** /out:$@ $(LIBS)
+
+quadtfd.$(MEXEXT): quadtfd_m.obj quadtfd.obj quadknl.obj fft.obj arithm.obj analyt.obj tfsa_c.obj window.obj tlocal.obj $(MATHS_CEPHES_LIB) $(LIBS)
+    $(LD) $(LFLAGS) $** /out:$@ $(LIBS)
+
+cmpt.$(MEXEXT): cmpt_m.obj cmpt.obj quadknl.obj fft.obj arithm.obj analyt.obj tfsa_c.obj window.obj tlocal.obj $(MATHS_CEPHES_LIB) $(LIBS)
+    $(LD) $(LFLAGS) $** /out:$@ $(LIBS)
+
+gsig.$(MEXEXT): gsig_m.obj gsig.obj tfsa_c.obj tlocal.obj  random.obj $(LIBS)
+    $(LD) $(LFLAGS) $** /out:$@ $(LIBS)
+
+lms.$(MEXEXT): lms_m.obj lms.obj tfsa_c.obj tlocal.obj  analyt.obj fft.obj arithm.obj $(LIBS)
+    $(LD) $(LFLAGS) $** /out:$@ $(LIBS)
+
+pdeIF.$(MEXEXT): pdeIF_m.obj pdeIF.obj fft.obj arithm.obj analyt.obj tfsa_c.obj tlocal.obj $(LIBS)
+    $(LD) $(LFLAGS) $** /out:$@ $(LIBS)
+
+psde.$(MEXEXT): psde_m.obj psde.obj arithm.obj window.obj fft.obj tfsa_c.obj tlocal.obj $(LIBS)
+    $(LD) $(LFLAGS) $** /out:$@ $(LIBS)
+
+pwvd4.$(MEXEXT): pwvd4_m.obj pwvd4.obj fft.obj arithm.obj analyt.obj tfsa_c.obj tlocal.obj $(LIBS)
+    $(LD) $(LFLAGS) $** /out:$@ $(LIBS)
+
+pwvd6.$(MEXEXT): pwvd6_m.obj pwvd6.obj fft.obj arithm.obj analyt.obj tfsa_c.obj tlocal.obj $(LIBS)
+    $(LD) $(LFLAGS) $** /out:$@ $(LIBS)
+
+pwvpe.$(MEXEXT): pwvpe_m.obj pwvpe.obj tfsa_c.obj tlocal.obj  analyt.obj fft.obj arithm.obj $(LIBS)
+    $(LD) $(LFLAGS) $** /out:$@ $(LIBS)
+
+rihaczek.$(MEXEXT): rihaczek_m.obj rihaczek.obj tfsa_c.obj tlocal.obj  analyt.obj fft.obj arithm.obj spec.obj window.obj $(MATHS_CEPHES_LIB)
+    $(LD) $(LFLAGS) $** /out:$@ $(LIBS)
+
+rls.$(MEXEXT): rls_m.obj rls.obj tfsa_c.obj tlocal.obj  analyt.obj fft.obj arithm.obj $(LIBS)
+    $(LD) $(LFLAGS) $** /out:$@ $(LIBS)
+
+sfpe.$(MEXEXT): sfpe_m.obj sfpe.obj tfsa_c.obj tlocal.obj  analyt.obj fft.obj arithm.obj $(LIBS)
+    $(LD) $(LFLAGS) $** /out:$@ $(LIBS)
+
+spec.$(MEXEXT): spec_m.obj spec.obj tfsa_c.obj tlocal.obj window.obj analyt.obj fft.obj arithm.obj $(MATHS_CEPHES_LIB)
+    $(LD) $(LFLAGS) $** /out:$@ $(LIBS)
+
+synthesize.$(MEXEXT): synthesize_m.obj synthesize.obj tfsa_c.obj tlocal.obj window.obj analyt.obj fft.obj arithm.obj spec.obj $(MATHS_CEPHES_LIB)
+    $(LD) $(LFLAGS) $** /out:$@ $(LIBS)
+
+wlet.$(MEXEXT): wlet_m.obj window.obj tfsa_c.obj tlocal.obj  wlet.obj $(MATHS_CEPHES_LIB) $(LIBS)
+    $(LD) $(LFLAGS) $** /out:$@ $(LIBS)
+
+wvd.$(MEXEXT): wvd_m.obj wvd.obj fft.obj arithm.obj analyt.obj tfsa_c.obj tlocal.obj $(LIBS)
+    $(LD) $(LFLAGS) $** /out:$@ $(LIBS)
+
+wvpe.$(MEXEXT): wvpe_m.obj wvpe.obj tfsa_c.obj tlocal.obj  analyt.obj fft.obj arithm.obj $(LIBS)
+    $(LD) $(LFLAGS) $** /out:$@ $(LIBS)
+
+xwvd.$(MEXEXT): xwvd_m.obj xwvd.obj fft.obj arithm.obj analyt.obj tfsa_c.obj tlocal.obj $(LIBS)
+    $(LD) $(LFLAGS) $** /out:$@ $(LIBS)
+
+zce.$(MEXEXT): zce_m.obj zce.obj tfsa_c.obj tlocal.obj $(LIBS)
+    $(LD) $(LFLAGS) $** /out:$@ $(LIBS)
+
+stft.$(MEXEXT): stft_m.obj stft.obj window.obj fft.obj arithm.obj tfsa_c.obj tlocal.obj $(LIBS)
+    $(LD) $(LFLAGS) $** /out:$@ $(LIBS)
+    
+specSM.$(MEXEXT): specSM_m.obj specSM.obj  stft.obj window.obj fft.obj arithm.obj tfsa_c.obj tlocal.obj $(LIBS)
+    $(LD) $(LFLAGS) $** /out:$@ $(LIBS)
+
+#############################################################################
+# Don't edit below here!!!
+#############################################################################
+
+setup_batch_files:
+	$(VC_BATCH)
+
+install: $(mex_files)
+	if not exist $(BINDIR) mkdir $(BINDIR)
+	copy *.$(MEXEXT) $(BINDIR)
+	copy func_m\*.m $(BINDIR)
+	copy func_support\*.p $(BINDIR)
+	copy gui_m\* $(BINDIR)
+	if not exist $(BINDIR)\Documentation mkdir $(BINDIR)\Documentation
+	copy .\Documentation\*.pdf $(BINDIR)\Documentation
+	copy data\* $(BINDIR)
+	if not exist $(BINDIR)\help mkdir $(BINDIR)\help
+	copy gui_m\help\*m $(BINDIR)\help
+	if not exist $(BINDIR)\htmldocs mkdir $(BINDIR)\htmldocs
+	xcopy /S htmldocs $(BINDIR)\htmldocs
+
+clean :
+	if exist *.obj del /F /Q *.obj
+	if exist *.exp del /F /Q *.exp
+	if exist *.lib del /F /Q *.lib
+	if exist *.$(MEXEXT) del /F /Q *.$(MEXEXT)
+	if exist *.manifest del /F /Q *.manifest
+# if exist *~ del /F /Q *~
+# del /F /Q func_src\*~
+# del /F /Q func_wrap\*~
+# del /F /Q func_support\*~
+# del /F /Q func_m\*~
+# del /F /Q gui_m\*~
+# del /F /Q include\*~
+
+uninstall:
+	del /S /Q /F $(BINDIR)\* 
+	if exist $(BINDIR)\help rmdir /S /Q $(BINDIR)\help
+	if exist $(BINDIR)\htmldocs rmdir /S /Q $(BINDIR)\htmldocs
+
+
